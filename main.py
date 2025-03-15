@@ -27,7 +27,7 @@ def plot_training_progress(filename=None):
 EPISODES = 3000
 MAX_STEPS = 500
 UPDATE_INTERVAL = 1750
-SAVE_INTERVAL = 100
+SAVE_INTERVAL = 250
 PLOT_INTERVAL = 100
 
 os.makedirs("training_plots", exist_ok=True)
@@ -41,7 +41,7 @@ agent = PPOAgent(
     lr_critic=0.001,
     clip_epsilon=0.2,
     entropy_coef=0.01,
-    gamma=0.95
+    gamma=0.97
 )
 
 episode_rewards = []

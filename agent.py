@@ -79,10 +79,10 @@ class PPOBuffer:
 
 class PPOAgent:
     def __init__(self, env, hidden_size=512, lr_actor=0.001, lr_critic=0.001, 
-                 gamma=0.95, gae_lambda=0.95, clip_epsilon=0.2, entropy_coef=0.01):
+                 gamma=0.97, gae_lambda=0.95, clip_epsilon=0.2, entropy_coef=0.01):
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.policy = PPONetwork(28, hidden_size, env.action_space).to(self.device)
+        self.policy = PPONetwork(42, hidden_size, env.action_space).to(self.device)
         self.optimizer = optim.Adam([
             {'params': self.policy.actor.parameters(), 'lr': lr_actor},
             {'params': self.policy.critic.parameters(), 'lr': lr_critic}
@@ -123,8 +123,8 @@ class PPOAgent:
         advantages, normalized_advantages = self.buffer.compute_advantages()
         normalized_advantages = normalized_advantages.float().to(self.device)
         
-        for _ in range(4):
-            for idx in torch.randperm(len(states)).split(32):  # Batch size 32
+        for _ in range(10):
+            for idx in torch.randperm(len(states)).split(64):  # Batch size 32
                 batch_states = states[idx]
                 batch_actions = actions[idx]
                 batch_old_log_probs = old_log_probs[idx]

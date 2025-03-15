@@ -58,25 +58,46 @@ class CollectorEnv:
         return self._get_observation()
 
     def _get_observation(self):
-        active_balls = self.balls[self.active_balls]
-
-        obs_balls = np.zeros((self.NUM_BALLS, 2))
-        obs_balls[:len(active_balls)] = active_balls
-
-        valid_count = min(len(active_balls), self.NUM_BALLS)
-        if valid_count > 0:
-            obs_balls[:valid_count] = active_balls[:valid_count]
-
-        # Normalize positions
+        # Posición del agente normalizada
         agent_normalized = self.agent_pos / [self.WIDTH, self.HEIGHT]
-        balls_normalized = (obs_balls / [self.WIDTH, self.HEIGHT]).flatten()
-        traps_normalized = (self.traps / [self.WIDTH, self.HEIGHT]).flatten()
         
-        return np.concatenate([
-            agent_normalized,
-            balls_normalized,
-            traps_normalized
+        # Información sobre objetivos (pelotas)
+        active_balls = np.where(self.active_balls)[0]
+        
+        # Vectores relativos a objetivos (normalizados)
+        ball_vectors = np.zeros((self.NUM_BALLS, 2))
+        ball_distances = np.zeros(self.NUM_BALLS)
+        ball_active = np.zeros(self.NUM_BALLS)
+        
+        for i, ball_idx in enumerate(active_balls):
+            if i >= self.NUM_BALLS:
+                break
+            ball_vectors[i] = (self.balls[ball_idx] - self.agent_pos) / [self.WIDTH, self.HEIGHT]
+            ball_distances[i] = np.linalg.norm(self.balls[ball_idx] - self.agent_pos) / np.sqrt(self.WIDTH**2 + self.HEIGHT**2)
+            ball_active[i] = 1.0
+        
+        # Vectores relativos a trampas (normalizados)
+        trap_vectors = np.zeros((len(self.traps), 2))
+        trap_distances = np.zeros(len(self.traps))
+        
+        for i, trap in enumerate(self.traps):
+            trap_vectors[i] = (trap - self.agent_pos) / [self.WIDTH, self.HEIGHT]
+            trap_distances[i] = np.linalg.norm(trap - self.agent_pos) / np.sqrt(self.WIDTH**2 + self.HEIGHT**2)
+                
+        # Indicador de progreso (cuántas pelotas se han recogido)
+        progress = 1.0 - (np.sum(self.active_balls) / len(self.active_balls)) if len(self.active_balls) > 0 else 1.0
+        
+        # Ensamblar la observación
+        observation = np.concatenate([
+            agent_normalized,                    # Posición absoluta del agente (2)
+            ball_vectors.flatten(),              # Vectores hacia las pelotas (NUM_BALLS * 2)
+            ball_distances,                      # Distancias a las pelotas (NUM_BALLS)
+            trap_vectors.flatten(),              # Vectores hacia las trampas (num_traps * 2)
+            trap_distances,                      # Distancias a las trampas (num_traps)
+            [progress]                           # Indicador de progreso (1)
         ])
+        
+        return observation
 
     def _check_collision(self, circle_pos, radius):
         closest_x = max(self.agent_pos[0], min(circle_pos[0], self.agent_pos[0] + self.agent_size))
@@ -119,7 +140,7 @@ class CollectorEnv:
             new_distance = np.min(np.linalg.norm(active_ball_positions - self.agent_pos, axis=1))
             
             # Distance-based shaping reward
-            k = 0.05  # Reasonably strong shaping factor
+            k = 0.08  # Reasonably strong shaping factor
             distance_improvement = prev_distance - new_distance
             
             # Only give positive reward for actual improvement
@@ -164,8 +185,6 @@ class CollectorEnv:
                     break
         else:
             self.hit_cooldown -= 1
-
-
             
         return self._get_observation(), float(reward), done, {}
 
