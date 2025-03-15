@@ -121,7 +121,7 @@ class PPOAgent:
         actions = torch.LongTensor(self.buffer.actions).to(self.device)
         old_log_probs = torch.FloatTensor(self.buffer.log_probs).to(self.device)
         advantages, normalized_advantages = self.buffer.compute_advantages()
-        normalized_advantages = normalized_advantages.float()
+        normalized_advantages = normalized_advantages.float().to(self.device)
         
         for _ in range(4):
             for idx in torch.randperm(len(states)).split(32):  # Batch size 32

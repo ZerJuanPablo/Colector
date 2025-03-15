@@ -52,7 +52,8 @@ for episode in range(EPISODES):
     state = env.reset()
     episode_reward = 0
     done = False
-    
+    print(f'Finished episode {episode}')
+
     for _ in range(MAX_STEPS):
         action, log_prob, value = agent.get_action(state)
         next_state, reward, done, _ = env.step(action)
@@ -92,7 +93,7 @@ total_reward = 0
 
 for _ in range(MAX_STEPS):
     with torch.no_grad():
-        probs, _ = agent.policy(torch.FloatTensor(state))
+        probs, _ = agent.policy(torch.FloatTensor(state).to('cuda'))
     action = torch.argmax(probs).item()
     
     next_state, reward, done, _ = test_env.step(action)

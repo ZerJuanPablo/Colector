@@ -85,10 +85,21 @@ class CollectorEnv:
         return distance <= radius
 
     def step(self, action):
-        reward = -0.05 
+        # Record state before moving
+        prev_agent_pos = np.copy(self.agent_pos)
+        
+        # Calculate minimum distance to active balls before moving
+        if np.any(self.active_balls):
+            active_ball_positions = self.balls[self.active_balls]
+            prev_distance = np.min(np.linalg.norm(active_ball_positions - prev_agent_pos, axis=1))
+        else:
+            prev_distance = 0
+        
+        # Apply small cost per step to encourage efficiency
+        reward = -0.01  # Small penalty for each step
         done = False
-        previous_pos = np.copy(self.agent_pos)
-    
+        
+        # Process movement based on action
         if action == 1:  # left
             self.agent_pos[0] = max(0, self.agent_pos[0] - self.agent_speed)
         elif action == 2:  # right
@@ -98,35 +109,61 @@ class CollectorEnv:
         elif action == 4:  # down
             self.agent_pos[1] = min(self.HEIGHT - self.agent_size, self.agent_pos[1] + self.agent_speed)
         
-        # Reward for collecting a ball
-        for i in np.where(self.active_balls)[0]: 
+        # Add a small penalty if the agent didn't move (discourage staying still)
+        if np.array_equal(self.agent_pos, prev_agent_pos) and action != 0:
+            reward -= 0.1  # Penalty for trying to move but hitting a wall
+        
+        # Calculate new distances after moving
+        if np.any(self.active_balls):
+            active_ball_positions = self.balls[self.active_balls]
+            new_distance = np.min(np.linalg.norm(active_ball_positions - self.agent_pos, axis=1))
+            
+            # Distance-based shaping reward
+            k = 0.5  # Reasonably strong shaping factor
+            distance_improvement = prev_distance - new_distance
+            
+            # Only give positive reward for actual improvement
+            if distance_improvement > 0:
+                reward += distance_improvement * k
+        else:
+            new_distance = 0
+            
+        # Count balls collected this step
+        balls_collected_this_step = 0
+        
+        # Reward for collecting balls with increasing returns
+        for i in np.where(self.active_balls)[0]:
             if self._check_collision(self.balls[i], self.BALL_RADIUS):
                 self.active_balls[i] = False
-                reward += 10
+                balls_collected_this_step += 1
                 self.score += 1
-                break
         
-        # Reward for falling into trap
+        # Progressive reward: more points for each successive ball collected
+        # This encourages collecting all balls, not just the closest ones
+        if balls_collected_this_step > 0:
+            # Calculate how many balls were already collected before this step
+            total_balls = len(self.active_balls)
+            balls_collected_before = total_balls - np.sum(self.active_balls) - balls_collected_this_step
+            
+            # Progressive reward formula: base_reward * (1 + 0.5 * balls_already_collected)
+            for i in range(balls_collected_this_step):
+                collected_ball_number = balls_collected_before + i + 1
+                ball_reward = 1.0 * (1 + 0.5 * (collected_ball_number - 1))
+                reward += ball_reward
+        
+        # Big bonus for collecting all balls
+        if np.sum(self.active_balls) == 0 and balls_collected_this_step > 0:
+            reward += 10.0  # Significant bonus for collecting all balls
+        
+        # Penalty for hitting traps
         if self.hit_cooldown <= 0:
             for trap in self.traps:
                 if self._check_collision(trap, self.TRAP_RADIUS):
-                    reward -= 15
+                    reward -= 1.5
                     self.hit_cooldown = 30
                     break
-        
-        # Recompensa direccional (en lugar de proximidad)
-        #if np.any(movement_direction):
-        #    ball_vectors = self.balls - self.agent_pos
-        #    directions = ball_vectors / (np.linalg.norm(ball_vectors, axis=1, keepdims=True) + 1e-5)
-        #    avg_direction = np.mean(directions, axis=0)
-        #    
-        #    movement_dir = movement_direction / (np.linalg.norm(movement_direction) + 1e-5)
-        #    alignment = np.dot(movement_dir, avg_direction)
-        #    proximity_reward = 0.8 * alignment  # Máx 0.8 por paso
-        #    reward += proximity_reward
-        #
-        # Límite máximo de recompensa por paso
-        #reward = np.clip(reward, -5, 3)
+        else:
+            self.hit_cooldown -= 1
         
         return self._get_observation(), float(reward), done, {}
 
