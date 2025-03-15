@@ -25,7 +25,7 @@ def plot_training_progress(filename=None):
 
 # Configuration
 EPISODES = 3000
-MAX_STEPS = 350
+MAX_STEPS = 500
 UPDATE_INTERVAL = 1750
 SAVE_INTERVAL = 100
 PLOT_INTERVAL = 100
@@ -37,10 +37,11 @@ env = environment.CollectorEnv(render=False)
 agent = PPOAgent(
     env,
     hidden_size=512,
-    lr_actor=0.0003,
+    lr_actor=0.001,
     lr_critic=0.001,
     clip_epsilon=0.2,
-    entropy_coef=0.01
+    entropy_coef=0.01,
+    gamma=0.95
 )
 
 episode_rewards = []

@@ -96,7 +96,7 @@ class CollectorEnv:
             prev_distance = 0
         
         # Apply small cost per step to encourage efficiency
-        reward = -0.01  # Small penalty for each step
+        reward = -0.1  # Small penalty for each step
         done = False
         
         # Process movement based on action
@@ -119,7 +119,7 @@ class CollectorEnv:
             new_distance = np.min(np.linalg.norm(active_ball_positions - self.agent_pos, axis=1))
             
             # Distance-based shaping reward
-            k = 0.5  # Reasonably strong shaping factor
+            k = 0.05  # Reasonably strong shaping factor
             distance_improvement = prev_distance - new_distance
             
             # Only give positive reward for actual improvement
@@ -148,23 +148,25 @@ class CollectorEnv:
             # Progressive reward formula: base_reward * (1 + 0.5 * balls_already_collected)
             for i in range(balls_collected_this_step):
                 collected_ball_number = balls_collected_before + i + 1
-                ball_reward = 1.0 * (1 + 0.5 * (collected_ball_number - 1))
+                ball_reward = 15.0 * (1 + 1.5 * (collected_ball_number - 1))
                 reward += ball_reward
         
         # Big bonus for collecting all balls
         if np.sum(self.active_balls) == 0 and balls_collected_this_step > 0:
-            reward += 10.0  # Significant bonus for collecting all balls
+            reward += 100.0  # Significant bonus for collecting all balls
         
         # Penalty for hitting traps
         if self.hit_cooldown <= 0:
             for trap in self.traps:
                 if self._check_collision(trap, self.TRAP_RADIUS):
-                    reward -= 1.5
+                    reward -= 20
                     self.hit_cooldown = 30
                     break
         else:
             self.hit_cooldown -= 1
-        
+
+
+            
         return self._get_observation(), float(reward), done, {}
 
     def render(self):

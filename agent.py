@@ -78,8 +78,8 @@ class PPOBuffer:
         self.dones.clear()
 
 class PPOAgent:
-    def __init__(self, env, hidden_size=512, lr_actor=0.0003, lr_critic=0.001, 
-                 gamma=0.99, gae_lambda=0.95, clip_epsilon=0.2, entropy_coef=0.01):
+    def __init__(self, env, hidden_size=512, lr_actor=0.001, lr_critic=0.001, 
+                 gamma=0.95, gae_lambda=0.95, clip_epsilon=0.2, entropy_coef=0.01):
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy = PPONetwork(28, hidden_size, env.action_space).to(self.device)
