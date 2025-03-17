@@ -145,7 +145,7 @@ class PPOAgent:
         normalized_advantages = normalized_advantages.float().to(self.device)
         
         for _ in range(10):
-            for idx in torch.randperm(len(states)).split(256):  # Batch size 128
+            for idx in torch.randperm(len(states)).split(256):
                 batch_states = states[idx]
                 batch_actions = actions[idx]
                 batch_old_log_probs = old_log_probs[idx]
