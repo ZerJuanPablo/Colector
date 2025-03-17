@@ -10,8 +10,8 @@ def evaluate_model(model_path, episodes=3, max_steps=500):
     agent = PPOAgent(env)
     agent.load_model(model_path)
     agent.policy.eval()
-    
-    for var in [0, 5, 10]:
+        
+    for var in [20]:
         state = env.reset(variability=var)
         total_reward = 0
         done = False
