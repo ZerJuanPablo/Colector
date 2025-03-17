@@ -206,6 +206,9 @@ Progress visualizations at selected episodes:
 
 The agent learned to collect all balls but consistently struggled with trap avoidance, suggesting a need for further reward tuning or extended training.
 
+Here is the learning curve:
+
+![Learning_curve](Documentation/Final_result.png)
 ---
 
 ## Future Work
