@@ -409,6 +409,7 @@ This was the hardest part to define as even the slight variation in them made th
 | λ (GAE)     | 0.95  | Advantage estimation smoothing | Bias-variance tradeoff         |                                                                                                                                          |
 | ε (clip)    | 0.2   | Policy update constraint       | Exploration vs exploitation    | We tried to force the agent to explore more, as it never tried to go for all balls.                                                      |
 | β (entropy) | 0.01  | Exploration incentive\|        | Policy diversity vs focus\|    | We tried to force the agent to explore more, as it never tried to go for all balls.                                                      |
+
 **Update Mechanics**:
 - **10 Epochs**: Tried to maximize data utilization without overfitting
 - **Gradient Clipping (0.5)**: Prevents exploding gradients in deep network
