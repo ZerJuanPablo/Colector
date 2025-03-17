@@ -87,7 +87,7 @@ def main():
         # Variability increase
         if episode > start_episode and episode % args.variability_interval == 0 and current_variability < args.max_variability:
             current_variability = min(current_variability + args.variability_step, args.max_variability)
-            print(f"Episodio {episode}, variability increase: {current_variability:.2f}")
+            print(f"Episode {episode}, variability increase: {current_variability:.2f}")
         
         # Reset the enviroment
         state = env.reset(variability=current_variability)

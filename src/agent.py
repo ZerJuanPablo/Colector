@@ -78,6 +78,15 @@ class PPOBuffer:
         self.log_probs.clear()
         self.dones.clear()
 
+    def compute_returns(self):
+        returns = []
+        G = 0
+        # Iterate in reverse to compute the return at each timestep.
+        for reward, done in zip(reversed(self.rewards), reversed(self.dones)):
+            G = reward + self.gamma * G * (1 - done)
+            returns.insert(0, G)
+        return torch.tensor(returns, dtype=torch.float32)
+
 class PPOAgent:
     def __init__(self, env, hidden_size=256, lr_actor=0.0003, lr_critic=0.001, 
                  gamma=0.97, gae_lambda=0.95, clip_epsilon=0.25, entropy_coef=0.03):
@@ -130,6 +139,8 @@ class PPOAgent:
         states = torch.FloatTensor(np.array(self.buffer.states, dtype=np.float32)).to(self.device)
         actions = torch.LongTensor(self.buffer.actions).to(self.device)
         old_log_probs = torch.FloatTensor(self.buffer.log_probs).to(self.device)
+
+        returns = self.buffer.compute_returns().to(self.device)
         advantages, normalized_advantages = self.buffer.compute_advantages()
         normalized_advantages = normalized_advantages.float().to(self.device)
         
@@ -139,19 +150,20 @@ class PPOAgent:
                 batch_actions = actions[idx]
                 batch_old_log_probs = old_log_probs[idx]
                 batch_advantages = normalized_advantages[idx]
+                batch_returns = returns[idx]
                 
                 # New probabilities
                 new_probs, new_values = self.policy(batch_states)
                 dist = Categorical(new_probs)
                 entropy = dist.entropy().mean()
                 
-                # Ratio
+                # Actor loss
                 ratio = (dist.log_prob(batch_actions) - batch_old_log_probs).exp()
                 surr1 = ratio * batch_advantages
                 surr2 = torch.clamp(ratio, 1-self.clip_epsilon, 1+self.clip_epsilon) * batch_advantages
                 actor_loss = -torch.min(surr1, surr2).mean()
                 
-                critic_loss = F.mse_loss(new_values, normalized_advantages[idx])
+                critic_loss = F.mse_loss(new_values, batch_returns)
                 
                 total_loss = actor_loss + 0.5 * critic_loss - self.entropy_coef * entropy
                 

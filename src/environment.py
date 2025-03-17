@@ -217,13 +217,14 @@ class CollectorEnv:
         
         # Big bonus for collecting all balls
         if np.sum(self.active_balls) == 0 and balls_collected_this_step > 0:
-            reward += 100.0  # Significant bonus for collecting all balls
+            reward += 200.0  # Significant bonus for collecting all balls
         
         # Penalty for hitting traps
         if self.hit_cooldown <= 0:
             for trap in self.traps:
                 if self._check_collision(trap, self.TRAP_RADIUS):
                     reward -= 50
+                    print("trapped")
                     self.hit_cooldown = 30
                     break
         else:
