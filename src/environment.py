@@ -183,7 +183,7 @@ class CollectorEnv:
             new_distance = np.min(np.linalg.norm(active_ball_positions - self.agent_pos, axis=1))
             
             # Distance-based shaping reward
-            k = 0.08  # Reasonably strong shaping factor
+            k = 0.08 
             distance_improvement = prev_distance - new_distance
             
             # Only give positive reward for actual improvement
@@ -224,7 +224,6 @@ class CollectorEnv:
             for trap in self.traps:
                 if self._check_collision(trap, self.TRAP_RADIUS):
                     reward -= 50
-                    print("trapped")
                     self.hit_cooldown = 30
                     break
         else:

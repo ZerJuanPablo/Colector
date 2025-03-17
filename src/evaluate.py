@@ -36,7 +36,6 @@ def evaluate_model(model_path, episodes=3, max_steps=500):
             pygame.time.wait(10) 
             
             if done:
-                print("The agent is done")
                 break
         
         print(f"Reward = {total_reward}")
@@ -44,7 +43,7 @@ def evaluate_model(model_path, episodes=3, max_steps=500):
     env.close()
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Use: python evaluate.py <model_path>") # Adjust model path TO DO: make it a parameter
+        print("Use: python evaluate.py <model_path>")
         sys.exit(1)
     
     evaluate_model(sys.argv[1])
