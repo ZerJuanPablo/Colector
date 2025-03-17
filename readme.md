@@ -93,16 +93,13 @@ def _get_observation(self):
 ---
 ## PPO Algorithm Implementation
 
-We chose PPO for its balance of stability and efficiency, using an Actor-Critic neural network architecture.
+Our implementation of Proximal Policy Optimization (PPO) leverages three main components: the neural network (`PPONetwork`), the experience buffer (`PPOBuffer`), and the agent (`PPOAgent`).
 
-### Neural Network Structure
-
+#### Neural Network (`PPONetwork`)
 Our network contains:
 - **Shared Layers**: Two fully connected layers (256 and 128 neurons with ReLU activation).
 - **Actor**: Outputs action probabilities through a softmax layer.
 - **Critic**: Estimates expected state values.
-
-Example architecture:
 
 ```python
 class PPONetwork(nn.Module):
@@ -132,12 +129,49 @@ class PPONetwork(nn.Module):
         x = self.shared(x)
         return torch.softmax(self.actor(x), dim=-1), self.critic(x).squeeze()
 ```
-### Experience Collection and Policy Updates:
+#### Experience Buffer (`PPOBuffer`)
 - Experiences were collected using Generalized Advantage Estimation (GAE) to improve training stability.
 - PPO updates utilized:
   - Policy clipping with `ε = 0.2`
   - Entropy regularization (`coef = 0.02`) to enhance exploration.
   - Gradient clipping (`norm = 0.5`) to maintain training stability.
+
+```python
+def compute_advantages(self):
+    # Advantage estimation using GAE
+def compute_returns(self):
+    # Compute discounted returns
+```
+#### Agent (`PPOAgent`)
+Responsible for interacting with the environment, collecting experiences, updating policies, and managing training.
+
+- **Action Selection**: Chooses actions based on probabilities provided by the neural network, with a small chance (5%) for random actions to encourage exploration.
+
+```python
+def get_action(self, state):
+    state_tensor = torch.FloatTensor(state).to(self.device)
+    probs, value = self.policy(state_tensor)
+    dist = Categorical(probs)
+    action = dist.sample()
+    return action.item(), dist.log_prob(action), value.item()
+```
+
+- **Policy Update**: The agent updates the neural network by computing actor and critic losses, ensuring stable policy improvement via PPO's clipped objective and entropy regularization.
+
+```python
+def update(self):
+    # Calculate PPO clipped loss, critic loss, and entropy bonus
+    actor_loss = -torch.min(surr1, surr2).mean()
+    critic_loss = F.mse_loss(new_values, batch_returns)
+    total_loss = actor_loss + 0.5 * critic_loss - entropy_coef * entropy
+
+    self.optimizer.zero_grad()
+    total_loss.backward()
+    torch.nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)
+    self.optimizer.step()
+```
+
+This approach balances exploration with exploitation and stabilizes the training process, essential for robust reinforcement learning performance.
 
 ---
 ## Training and Experimentation
