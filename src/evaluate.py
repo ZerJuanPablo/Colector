@@ -5,7 +5,7 @@ import torch
 import pygame
 import sys
 
-def evaluate_model(model_path, episodes=3, max_steps=350):
+def evaluate_model(model_path, episodes=3, max_steps=500):
     env = environment.CollectorEnv(render=True)
     agent = PPOAgent(env)
     agent.load_model(model_path)
@@ -36,6 +36,7 @@ def evaluate_model(model_path, episodes=3, max_steps=350):
             pygame.time.wait(10) 
             
             if done:
+                print("The agent is done")
                 break
         
         print(f"Reward = {total_reward}")

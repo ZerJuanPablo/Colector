@@ -12,23 +12,24 @@ class PPONetwork(nn.Module):
         # Shared layers
         self.shared = nn.Sequential(
             nn.Linear(input_size, hidden_size),
+            nn.LayerNorm(256),
             nn.ReLU(),
-            nn.Linear(hidden_size, 512),
+            nn.Linear(hidden_size, 128),
             nn.ReLU()
         )
         
         # Actor branch
         self.actor = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(256, output_size)
+            nn.Linear(64, output_size)
         )
         
         # Critic branch
         self.critic = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(256, 1)
+            nn.Linear(64, 1)
         )
         
     def forward(self, x):
@@ -78,11 +79,11 @@ class PPOBuffer:
         self.dones.clear()
 
 class PPOAgent:
-    def __init__(self, env, hidden_size=512, lr_actor=0.001, lr_critic=0.001, 
-                 gamma=0.97, gae_lambda=0.95, clip_epsilon=0.2, entropy_coef=0.01):
+    def __init__(self, env, hidden_size=256, lr_actor=0.0003, lr_critic=0.001, 
+                 gamma=0.97, gae_lambda=0.95, clip_epsilon=0.25, entropy_coef=0.03):
         self.env = env
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.policy = PPONetwork(42, hidden_size, env.action_space).to(self.device)
+        self.policy = PPONetwork(13, hidden_size, env.action_space).to(self.device)
         self.optimizer = optim.Adam([
             {'params': self.policy.actor.parameters(), 'lr': lr_actor},
             {'params': self.policy.critic.parameters(), 'lr': lr_critic}
@@ -97,6 +98,13 @@ class PPOAgent:
         state_tensor = torch.FloatTensor(state).to(self.device)
         with torch.no_grad():
             probs, value = self.policy(state_tensor)
+
+        # Add occasional random exploration
+        if random.random() < 0.05:  # 5% random actions
+            action = torch.randint(0, self.env.action_space, (1,)).to(self.device)
+            dist = Categorical(probs)
+            return action.item(), dist.log_prob(action), value.item()
+
         dist = Categorical(probs)
         action = dist.sample()
         self.action_history.append(action.item())
@@ -126,7 +134,7 @@ class PPOAgent:
         normalized_advantages = normalized_advantages.float().to(self.device)
         
         for _ in range(10):
-            for idx in torch.randperm(len(states)).split(64):  # Batch size 32
+            for idx in torch.randperm(len(states)).split(256):  # Batch size 128
                 batch_states = states[idx]
                 batch_actions = actions[idx]
                 batch_old_log_probs = old_log_probs[idx]

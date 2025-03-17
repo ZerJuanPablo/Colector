@@ -25,7 +25,7 @@ def plot_training_progress(filename=None):
     plt.close() if filename else None
 
 def main():
-    # Parseo de argumentos
+    # Arguments
     parser = argparse.ArgumentParser(description='Train PPO agent')
     parser.add_argument('--model_path', type=str, default=None,
                         help='Path to a pre-train-model to keep training it')
@@ -33,16 +33,16 @@ def main():
                         help='Initial variability value (0-10)')
     parser.add_argument('--max_variability', type=float, default=50.0,
                         help='Max cariability')
-    parser.add_argument('--variability_step', type=float, default=0.2,
+    parser.add_argument('--variability_step', type=float, default=0.5,
                         help='Variability increase per variability interval')
-    parser.add_argument('--variability_interval', type=int, default=50,
+    parser.add_argument('--variability_interval', type=int, default=25,
                         help='Episodes neede for an increase in variability interval')
     args = parser.parse_args()
 
-    # Configuración
-    EPISODES = 5000
+    # Configuration
+    EPISODES = 1000
     MAX_STEPS = 500
-    UPDATE_INTERVAL = 1750
+    UPDATE_INTERVAL = 2000
     SAVE_INTERVAL = 250
     PLOT_INTERVAL = 100
 
@@ -69,12 +69,12 @@ def main():
     else:
         agent = PPOAgent(
             env,
-            hidden_size=512,
-            lr_actor=0.001,
-            lr_critic=0.001,
+            hidden_size=256,
+            lr_actor=0.0003,
+            lr_critic=0.002,
             clip_epsilon=0.2,
-            entropy_coef=0.01,
-            gamma=0.97
+            entropy_coef=0.02,
+            gamma=0.975
         )
 
     global episode_rewards, moving_avg_rewards
@@ -87,13 +87,12 @@ def main():
         # Variability increase
         if episode > start_episode and episode % args.variability_interval == 0 and current_variability < args.max_variability:
             current_variability = min(current_variability + args.variability_step, args.max_variability)
-            print(f"Episodio {episode}, variabilidad incrementada a: {current_variability:.2f}")
+            print(f"Episodio {episode}, variability increase: {current_variability:.2f}")
         
         # Reset the enviroment
         state = env.reset(variability=current_variability)
         episode_reward = 0
         done = False
-        print(f'Iniciando episodio {episode} con variabilidad {current_variability:.2f}')
 
         for _ in range(MAX_STEPS):
             action, log_prob, value = agent.get_action(state)
@@ -113,21 +112,23 @@ def main():
             if done:
                 break
 
+        print(f'Episode: {episode} | Reward: {episode_reward:.2f}')
+
         episode_rewards.append(episode_reward)
         moving_avg = np.mean(episode_rewards[-100:]) 
         moving_avg_rewards.append(moving_avg)
         
         # Visualization
         if (episode + 1) % PLOT_INTERVAL == 0:
-            plot_training_progress(f"training_plots/progress_ep{episode+1}_var{current_variability:.1f}.png")
+            plot_training_progress(f"training_plots/progress_ep{episode+1}.png")
         
         # Save Model
         if (episode + 1) % SAVE_INTERVAL == 0:
             model_dir = "saved_models"
             os.makedirs(model_dir, exist_ok=True)
             metadata = {'variability': current_variability}
-            agent.save_model(f"{model_dir}/ppo_ep{episode+1}_var{current_variability:.1f}.pth", episode+1, metadata)
-            print(f"Model saved at {model_dir}/ppo_ep{episode+1}_var{current_variability:.1f}.pth")
+            agent.save_model(f"{model_dir}/ppo_ep{episode+1}.pth", episode+1, metadata)
+            print(f"Model saved at {model_dir}/ppo_ep{episode+1}.pth")
 
     # Evaluation with different variability
     print("\nEvaluation:")

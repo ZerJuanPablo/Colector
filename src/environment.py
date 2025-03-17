@@ -15,6 +15,9 @@ class CollectorEnv:
         self.NUM_BALLS = 10
         self.TRAP_RADIUS = 15
         self.NUM_TRAPS = 3
+        self.SENSOR_RANGE = 600
+        self.NUM_BALL_SENSORS = 8  # Directions: N, NE, E, SE, S, SW, W, NW
+        self.NUM_TRAP_SENSORS = 4  # Cardinal directions: N, E, S, W
         
         # PyGame render
         if self.render_mode:
@@ -24,7 +27,7 @@ class CollectorEnv:
         
         # Action and observation definition
         self.action_space = 5  # nothing + directions
-        self.observation_shape = (self.NUM_BALLS * 2 + self.NUM_TRAPS * 2 + 2,) # position of balls, position of traps, own position
+        self.observation_shape = (self.NUM_BALL_SENSORS + self.NUM_TRAP_SENSORS + 1,) # position of balls, position of traps, own position
         
         # Ball position (Fixed to make training faster)
         self.FIXED_BALLS = np.array([
@@ -65,47 +68,79 @@ class CollectorEnv:
         
         return self._get_observation()
 
-    def _get_observation(self):
-        # Posición del agente normalizada
-        agent_normalized = self.agent_pos / [self.WIDTH, self.HEIGHT]
+    def _get_ball_sensors(self):
+        sensor_readings = np.zeros(self.NUM_BALL_SENSORS)
+        angles = [0, 45, 90, 135, 180, 225, 270, 315]
         
-        # Información sobre objetivos (pelotas)
-        active_balls = np.where(self.active_balls)[0]
-        
-        # Vectores relativos a objetivos (normalizados)
-        ball_vectors = np.zeros((self.NUM_BALLS, 2))
-        ball_distances = np.zeros(self.NUM_BALLS)
-        ball_active = np.zeros(self.NUM_BALLS)
-        
-        for i, ball_idx in enumerate(active_balls):
-            if i >= self.NUM_BALLS:
-                break
-            ball_vectors[i] = (self.balls[ball_idx] - self.agent_pos) / [self.WIDTH, self.HEIGHT]
-            ball_distances[i] = np.linalg.norm(self.balls[ball_idx] - self.agent_pos) / np.sqrt(self.WIDTH**2 + self.HEIGHT**2)
-            ball_active[i] = 1.0
-        
-        # Vectores relativos a trampas (normalizados)
-        trap_vectors = np.zeros((len(self.traps), 2))
-        trap_distances = np.zeros(len(self.traps))
-        
-        for i, trap in enumerate(self.traps):
-            trap_vectors[i] = (trap - self.agent_pos) / [self.WIDTH, self.HEIGHT]
-            trap_distances[i] = np.linalg.norm(trap - self.agent_pos) / np.sqrt(self.WIDTH**2 + self.HEIGHT**2)
+        for i, angle in enumerate(angles):
+            min_distance = self.SENSOR_RANGE
+            rad = math.radians(angle)
+            
+            # Check active balls only
+            for ball_idx in np.where(self.active_balls)[0]:
+                bx, by = self.balls[ball_idx]
                 
-        # Indicador de progreso (cuántas pelotas se han recogido)
-        progress = 1.0 - (np.sum(self.active_balls) / len(self.active_balls)) if len(self.active_balls) > 0 else 1.0
+                # Calculate angle to ball
+                dx = bx - self.agent_pos[0]
+                dy = by - self.agent_pos[1]
+                ball_angle = math.degrees(math.atan2(dy, dx)) % 360
+                
+                # Find angular difference
+                angle_diff = min(abs(ball_angle - angle), 360 - abs(ball_angle - angle))
+                
+                if angle_diff < 22.5:  # 45 degree coverage per sensor
+                    distance = math.hypot(dx, dy)
+                    if distance < min_distance:
+                        min_distance = distance
+            
+            # Normalize and invert (1 = close, 0 = beyond sensor range)
+            sensor_readings[i] = 1.0 - min(min_distance / self.SENSOR_RANGE, 1.0)
         
-        # Ensamblar la observación
-        observation = np.concatenate([
-            agent_normalized,                    # Posición absoluta del agente (2)
-            ball_vectors.flatten(),              # Vectores hacia las pelotas (NUM_BALLS * 2)
-            ball_distances,                      # Distancias a las pelotas (NUM_BALLS)
-            trap_vectors.flatten(),              # Vectores hacia las trampas (num_traps * 2)
-            trap_distances,                      # Distancias a las trampas (num_traps)
-            [progress]                           # Indicador de progreso (1)
+        return sensor_readings
+
+    def _get_trap_sensors(self):
+        sensor_readings = np.zeros(self.NUM_TRAP_SENSORS)
+        directions = [
+            (0, -1),   # North
+            (1, 0),    # East
+            (0, 1),    # South
+            (-1, 0)    # West
+        ]
+        
+        for i, (dx_dir, dy_dir) in enumerate(directions):
+            min_distance = self.SENSOR_RANGE
+            agent_x, agent_y = self.agent_pos
+            
+            for step in range(1, self.SENSOR_RANGE // self.agent_speed):
+                x = agent_x + dx_dir * step * self.agent_speed
+                y = agent_y + dy_dir * step * self.agent_speed
+                
+                # Check against all traps
+                for trap in self.traps:
+                    tx, ty = trap
+                    if abs(x - tx) < self.TRAP_RADIUS and abs(y - ty) < self.TRAP_RADIUS:
+                        distance = math.hypot(x - agent_x, y - agent_y)
+                        if distance < min_distance:
+                            min_distance = distance
+                            break
+            
+            sensor_readings[i] = 1.0 - (min_distance / self.SENSOR_RANGE)
+        
+        return sensor_readings
+
+    def _get_observation(self):
+        # Get sensor readings
+        ball_sensors = self._get_ball_sensors()
+        trap_sensors = self._get_trap_sensors()
+        
+        # Progress indicator
+        progress = 1.0 - (np.sum(self.active_balls) / self.NUM_BALLS)
+        
+        return np.concatenate([
+            ball_sensors,
+            trap_sensors,
+            [progress]
         ])
-        
-        return observation
 
     def _check_collision(self, circle_pos, radius):
         closest_x = max(self.agent_pos[0], min(circle_pos[0], self.agent_pos[0] + self.agent_size))
@@ -125,7 +160,7 @@ class CollectorEnv:
             prev_distance = 0
         
         # Apply small cost per step to encourage efficiency
-        reward = -0.1  # Small penalty for each step
+        reward = -0.5  # Small penalty for each step
         done = False
         
         # Process movement based on action
@@ -140,7 +175,7 @@ class CollectorEnv:
         
         # Add a small penalty if the agent didn't move (discourage staying still)
         if np.array_equal(self.agent_pos, prev_agent_pos) and action != 0:
-            reward -= 0.1  # Penalty for trying to move but hitting a wall
+            reward -= 0.3  # Penalty for trying to move but hitting a wall
         
         # Calculate new distances after moving
         if np.any(self.active_balls):
@@ -177,7 +212,7 @@ class CollectorEnv:
             # Progressive reward formula: base_reward * (1 + 0.5 * balls_already_collected)
             for i in range(balls_collected_this_step):
                 collected_ball_number = balls_collected_before + i + 1
-                ball_reward = 15.0 * (1 + 1.5 * (collected_ball_number - 1))
+                ball_reward = 12.0 * (1 + 0.8 * (collected_ball_number - 1))
                 reward += ball_reward
         
         # Big bonus for collecting all balls
@@ -188,7 +223,7 @@ class CollectorEnv:
         if self.hit_cooldown <= 0:
             for trap in self.traps:
                 if self._check_collision(trap, self.TRAP_RADIUS):
-                    reward -= 20
+                    reward -= 50
                     self.hit_cooldown = 30
                     break
         else:
