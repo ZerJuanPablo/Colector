@@ -57,7 +57,7 @@ Our custom environment simulates a 2D collector scenario where our agent collect
 
 - **Objects**:
   - **Balls (Rewards)**: 10 balls (10-pixel radius); rewards exponentially increase with each collected ball.
-  - **Traps**: 3 traps (radius 15 pixels), collisions trigger a penalty and initiate a 30-step cooldown.
+  - **Traps**: 3 traps (15-pixel radius), collisions trigger a penalty and initiate a 30-step cooldown.
 
 - **Reward Structure**:
   - Step Penalty: `-0.5` per step.
