@@ -58,7 +58,7 @@ It will save the created model checkpoints in the directory `/saved_models`. The
 To evaluate a trained model checkpoint, run:
 
 ```bash
-python src/evaluate.py saved_models/model_checkpoint1000.pth
+python src/evaluate.py saved_models/ppo_ep1000.pth.pth
 ```
 Replace `model_checkpoint.pth` with the filename of the trained model checkpoint you want to evaluate stored in `/saved_models`.
 
