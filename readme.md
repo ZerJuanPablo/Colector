@@ -31,13 +31,12 @@ In this project, we demonstrate the use of Proximal Policy Optimization (PPO), a
 
 You can set up a virtual environment using `venv` to manage dependencies cleanly.
 
-Linux:
 ```bash
 python -m venv rl_env
 source rl_env/bin/activate
 pip install -r requirements.txt
 ```
-Windows:
+On Windows:
 ```bash
 python -m venv rl_env
 rl_env\Scripts\activate
