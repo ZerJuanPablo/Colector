@@ -22,11 +22,27 @@ In this project, we demonstrate the use of Proximal Policy Optimization (PPO), a
 
 - `/saved_models`: Stores trained models.
 - `/training_plots`: Stores visualizations of training performance.
-- `/deprecated`: Contains older versions of scripts no longer actively used.
 
 ---
 
 ## Running Instructions
+
+### Instalation
+
+You can set up a virtual environment using `venv` to manage dependencies cleanly.
+
+Linux:
+```bash
+python -m venv rl_env
+source rl_env/bin/activate
+pip install -r requirements.txt
+```
+Windows:
+```bash
+python -m venv rl_env
+rl_env\Scripts\activate
+pip install -r requirements.txt
+```
 
 ### Training and Evaluation Instructions
 
@@ -34,13 +50,18 @@ In this project, we demonstrate the use of Proximal Policy Optimization (PPO), a
 To train the PPO agent, execute the `train.py` script with optional parameters to control the variability of the environment:
 
 ```bash
-python src/train.py [--variability 0] [--max_variability 50] [--variability_step 0.5] [--variability_interval 25]
+python src/train.py --variability 0 --max_variability 50 --variability_step 0.5 --variability_interval 25
 ```
+
+It will save the created model checkpoints in the directory `/saved_models`. The models will be saved every 250 episodes.
+
 #### Evaluation
 To evaluate a trained model checkpoint, run:
+
 ```bash
-python src/evaluate.py <path_to_saved_model>
+python src/evaluate.py saved_models/model_checkpoint1000.pth
 ```
+Replace `model_checkpoint.pth` with the filename of the trained model checkpoint you want to evaluate stored in `/saved_models`.
 
 ---
 

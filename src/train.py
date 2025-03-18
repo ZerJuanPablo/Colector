@@ -4,7 +4,6 @@ from agent import PPOAgent
 import numpy as np
 import torch
 import os
-import datetime
 import matplotlib.pyplot as plt
 
 def plot_training_progress(filename=None):
