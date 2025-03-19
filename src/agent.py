@@ -130,7 +130,8 @@ class PPOAgent:
         }, path)
 
     def load_model(self, path):
-        checkpoint = torch.load(path)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        checkpoint = torch.load(path, map_location=self.device)
         self.policy.load_state_dict(checkpoint['policy_state'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state'])
         return checkpoint['episode'], checkpoint.get('metadata', {})

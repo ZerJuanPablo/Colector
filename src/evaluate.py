@@ -10,6 +10,7 @@ def evaluate_model(model_path, episodes=3, max_steps=500):
     agent = PPOAgent(env)
     agent.load_model(model_path)
     agent.policy.eval()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
     for var in [20]:
         state = env.reset(variability=var)
@@ -22,7 +23,7 @@ def evaluate_model(model_path, episodes=3, max_steps=500):
                     env.close()
                     sys.exit()
             
-            state_tensor = torch.FloatTensor(state).to('cuda')
+            state_tensor = torch.FloatTensor(state).to(device)
             with torch.no_grad():
                 probs, _ = agent.policy(state_tensor)
             action = torch.argmax(probs).item()
